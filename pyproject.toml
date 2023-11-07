@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "swiper"
+version = "0.1.0"
+description = ""
+authors = ["ev3rgard3n <ev3rgarden.off@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = {extras = ["all"], version = "^0.104.1"}
+loguru = "^0.7.2"
+sqlalchemy = "^2.0.23"
+alembic = "^1.12.1"
+asyncpg = "^0.29.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
