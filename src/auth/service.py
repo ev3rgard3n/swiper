@@ -20,13 +20,9 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 async def create_user(*, user_data: AuthRegistration, db: AuthDAO):
     login = user_data.login
     email = user_data.email
-    # hashed_password = get_hashing_password(user_data.password.get_secret_value())
     hashed_password = await get_hashing_password(user_data.password)
     
     logger.debug(f"login: {login}| email: {email} | hashed_password: {hashed_password}")
 
-    verify = await verify_password(user_data.password, hashed_password)
-    print(verify)
-    # return await db.add_one(login=login, hashed_password=hashed_password, email=email)
-    return True
+    return await db.add_one(login=login, hashed_password=hashed_password, email=email)
 
