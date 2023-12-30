@@ -14,7 +14,6 @@ uniq_null_params = Annotated[str, mapped_column(nullable=False, unique=True)]
 
 class AuthModels(Base):
     __tablename__ = "Auth"
-    # id: Mapped[UUID] = mapped_column(primary_key=True, server_default=text("gen_random_uuid()"))
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
 
     login: Mapped[uniq_null_params]
