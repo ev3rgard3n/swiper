@@ -1,8 +1,12 @@
+from copy import copy
 from datetime import datetime, timedelta
+import json
 
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from fastapi import HTTPException, Response, BackgroundTasks
+from fastapi import Response
+
 from sqlalchemy.engine.row import Row as sqlalchemyRow
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from jose import JWTError, jwt
 from loguru import logger
 
@@ -14,42 +18,47 @@ from src.auth.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS,
 )
-from src.auth.database import AuthDAO
+from src.auth.database import AuthDAO, ResetPasswordDAO
 from src.auth import exceptions
 from src.auth.utils import *
 
 
 class AuthService:
-    def __init__(self, db: AuthDAO) -> None:
-        self.db: AuthDAO = db
+    def __init__(self, db):
+        self.db = db
 
-    async def get_user_data(self, **user_data):
+    async def get_user_data(self, **filter_by) -> sqlalchemyRow:
         try:
             logger.info("Запрос user_data")
-            user_data = await self.db.get_user_data(**user_data)
+            user_data = await AuthDAO.get_user_data(self.db, **filter_by)
             return user_data[0]
         except IndexError:
             raise exceptions.InvalidUserDoesNotExist
 
     async def get_hashed_password(self, login: str) -> str:
-        hashed_password = await self.db.find_one_or_none(login=login)
+        hashed_password = await AuthDAO.find_one_or_none(self.db, login=login)
         return hashed_password.hashed_password
+
+    async def validate_data(self, **data):
+        return await AuthDAO.find_one_or_none(self.db, **data)
 
     async def create_user(self, *, user_data: AuthRegistration) -> str:
         login = user_data.login
         email = user_data.email
 
-        if await validate_data(self.db, login=login) is not None:
+        if await self.validate_data(login=login) is not None:
             raise exceptions.InvalidUserRegistrationLogin
 
-        if await validate_data(self.db, email=email) is not None:
+        if await self.validate_data(email=email) is not None:
             raise exceptions.InvalidUserRegistrationEmail
 
         hashed_password = await hashing_password(user_data.password)
-        data = await self.db.add_one(
-            login=login, hashed_password=hashed_password, email=email
+        data = await AuthDAO.add_one(
+            self.db, login=login, hashed_password=hashed_password, email=email
         )
-        return data
+
+        await self.db.commit()
+        return data[0]
 
     @staticmethod
     async def validate_password(password: str, hashed_password: str) -> bool:
@@ -57,26 +66,56 @@ class AuthService:
             raise exceptions.InvalidUserPassword
         return True
 
+    async def change_password(self, email: str, password: str) -> None:
+        logger.info("Запрос на изменение пароля")
+
+        hashed_password = await hashing_password(password)
+        filters = {"email": email}
+
+        await AuthDAO.update_one(self.db, filters, hashed_password=hashed_password)
+        await self.db.commit()
+
     async def user_authorization(self, *, user_data: AuthLogin) -> sqlalchemyRow:
         login = user_data.login
         password = user_data.password
 
-        if await validate_data(self.db, login=login) is None:
+        if await self.validate_data(login=login) is None:
             raise exceptions.InvalidUserLogin
 
         hashed_password = await self.get_hashed_password(login)
 
         await self.validate_password(password, hashed_password)
-        logger.info("Пользователь прошел проверку пароля")
-
         user_data = await self.get_user_data(login=login)
+
         return user_data
 
-    async def authorization_with_token(self, user_data: dict):
+    async def authorization_with_token(self, user_data: dict) -> sqlalchemyRow:
         logger.info("Автризация через токен")
 
-        user_data = await self.get_user_data(login=user_data["user_login"])
+        login = user_data["user_login"]
+        user_id = user_data["user_id"]
+        user_data = await self.get_user_data(login=login, id=user_id)
+
         return user_data
+
+    async def verify_email(self, user_id: str) -> None:
+        logger.debug(f"Верефикация почты пользователя: {user_id}")
+
+        filters = {"id": user_id}
+        await AuthDAO.update_one(self.db, filters, is_verified_email=True)
+        await self.db.commit()
+
+    async def deactivate_account(self, user_data: dict) -> None:
+        logger.info("Деактивация аккаунта")
+
+        login = user_data["user_login"]
+        user_id = user_data["user_id"]
+
+        filters = {"id": user_id, "login": login}
+        await AuthDAO.update_one(
+            self.db, filters, is_delete=True, deactivate_at=datetime.utcnow()
+        )
+        await self.db.commit()
 
 
 class TokenCRUD:
@@ -85,7 +124,7 @@ class TokenCRUD:
         logger.debug("Создаю токены")
 
         access_token = await cls._create_access_token(
-            user_login=data.login, is_admin=data.is_superuser
+            user_login=data.login, user_id=str(data.id), is_admin=data.is_superuser
         )
         refresh_token = await cls._create_refresh_token(str(data.id))
 
@@ -95,10 +134,9 @@ class TokenCRUD:
         return Token(access_token=access_token, refresh_token=refresh_token)
 
     @classmethod
-    async def logout(cls, response: Response):
+    async def logout(cls, response: Response) -> None:
         logger.info("Запрос на logout")
         await cls._delete_cookie(response=response)
-        return {"detail": "Success"}
 
     @classmethod
     async def _create_access_token(cls, **kwargs):
@@ -158,7 +196,71 @@ class TokenCRUD:
     @classmethod
     async def _delete_cookie(cls, response: Response) -> None:
         logger.info("Удаление куков")
-        
+
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
         response.delete_cookie("session")
+
+
+class ResetPasswordCRUD:
+    def __init__(self, db) -> None:
+        self.db = db
+
+    async def request_reset_password(self, id: str, email: str) -> str:
+        logger.info("Запрос на сброс пароля")
+
+        reset_code = await self.__create_reset_code()
+        await ResetPasswordDAO.add_one(
+            self.db, id=id, reset_code=reset_code, email=email
+        )
+        await self.db.commit()
+        return reset_code
+
+    async def confirm_reset_password(self, email: str, reset_code: str) -> None:
+        logger.info("Проверка введеного кода")
+
+        data = await self._get_data_from_db(email=email)
+        logger.debug(f"{data}")
+        logger.debug(f"{data.__dict__}")
+
+        if data.created_at + timedelta(minutes=30) < datetime.utcnow():
+            raise exceptions.InvalidResetCode
+
+        if reset_code != data.reset_code:
+            raise exceptions.InvalidResetCode
+
+    async def _get_data_from_db(self, **filter_by) -> str:
+        return await ResetPasswordDAO.find_one_or_none(self.db, **filter_by)
+
+    async def __create_reset_code(self) -> str:
+        return await generate_random_numbers()
+
+    async def _refresh_reset_code(self, email: str) -> str:
+        logger.info("Обновление кода")
+
+        reset_code = await self.__create_reset_code()
+        filters = {"email": email}
+
+        await ResetPasswordDAO.update_one(
+            self.db, filters, reset_code=reset_code, created_at=datetime.utcnow()
+        )
+        await self.db.commit()
+
+        return reset_code
+
+    async def _delete_entry(self, user_data) -> None:
+        email = user_data.email
+        code = user_data.code
+        await ResetPasswordDAO.delete_one(self.db, email=email, reset_code=code)
+        await self.db.commit()
+
+
+class DatabaseManager:
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.reset_password = ResetPasswordCRUD(db)
+        self.auth_service = AuthService(db)
+        self.token_crud = TokenCRUD()
+
+    async def commit(self):
+        await self.db.commit()

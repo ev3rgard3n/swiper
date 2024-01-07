@@ -32,7 +32,16 @@ class AuthModels(Base):
         primary_key=True, 
         server_default=text("TIMEZONE('utc', now())")
     )
-    update_at: Mapped[datetime] = mapped_column(
-        server_default=text("TIMEZONE('utc', now())"), 
-        onupdate=datetime.utcnow
+    deactivate_at: Mapped[datetime] = mapped_column(
+        nullable=True
+    )
+
+class ResetPasswordModel(Base):
+    __tablename__ = "ResetPassword"
+
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    email: Mapped[uniq_null_params]
+    reset_code: Mapped[str]
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=text("TIMEZONE('utc', now())")
     )

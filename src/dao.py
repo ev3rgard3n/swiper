@@ -1,4 +1,5 @@
-from sqlalchemy import select, insert, delete, update
+from sqlalchemy import select, insert, delete, update, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import async_session_maker
 from src.interfaces import AbstactDAO
@@ -7,33 +8,46 @@ from src.interfaces import AbstactDAO
 class SQLAlchemyDAO(AbstactDAO):
     model = None
 
-    async def find_all(self,  **filter_by):
-        async with async_session_maker() as session:
+    @classmethod
+    async def find_all(cls, db: AsyncSession, **filter_by):
+        stmt = select(cls.model).filter_by(**filter_by)
+        res = await db.execute(stmt)
 
-            stmt = select(self.model).filter_by(**filter_by)
-            res = await session.execute(stmt)
+        return res.scalars().all()
 
-            return res.all()
+    @classmethod
+    async def find_one_or_none(cls, db: AsyncSession, **filter_by):
+        stmt = select(cls.model).filter_by(**filter_by)
+        res = await db.execute(stmt)
 
-    async def find_one_or_none(self, **filter_by):
-        async with async_session_maker() as session:
+        return res.scalar_one_or_none()
 
-            stmt = select(self.model).filter_by(**filter_by)
-            res = await session.execute(stmt)
+    @classmethod
+    async def add_one(cls, db: AsyncSession, **values):
+        stmt = insert(cls.model).values(**values).returning(cls.model)
+        res = await db.execute(stmt)
 
-            return res.scalar_one_or_none()
+        return res.scalars().all()
 
-    async def add_one(self, **values):
-        async with async_session_maker() as session:
+    @classmethod
+    async def update_one(cls, db: AsyncSession, filters: dict, **values):
+        stmt = (
+            update(cls.model)
+            .filter(
+                text(
+                    " AND ".join(f"{key} = '{value}'" for key, value in filters.items())
+                )
+            )
+            .values(**values)
+            .returning(cls.model)
+        )
+        res = await db.execute(stmt)
 
-            stmt = insert(self.model).values(**values).returning(self.model.id)
-            res = await session.execute(stmt)
-            await session.commit()
+        return res.scalars().one()
 
-            return res.scalar_one()
+    @classmethod
+    async def delete_one(cls, db: AsyncSession, **filter_by):
+        stmt = delete(cls.model).filter_by(**filter_by)
+        res = await db.execute(stmt)
 
-    async def update_one():
-        pass
-
-    async def delete_one():
-        pass
+        return res

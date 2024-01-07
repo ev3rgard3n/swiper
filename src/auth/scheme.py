@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 from pydantic import BaseModel, EmailStr, UUID4
 
 
@@ -8,7 +9,7 @@ class AuthLogin(BaseModel):
 
 
 class AuthRegistration(AuthLogin):
-    email:  EmailStr
+    email: EmailStr
 
 
 class Token(BaseModel):
@@ -30,3 +31,19 @@ class UserData(BaseModel):
 class AuthorizedUser(BaseModel):
     user_data: UserData
     tokens: Token
+
+
+class ServerResponse(BaseModel):
+    msg: str
+    code: int = 0
+    data: dict | None = None
+
+
+class RequestToResponse(BaseModel):
+    detail: ServerResponse
+
+
+class ResetPassword(BaseModel):
+    email: EmailStr
+    password: str
+    code: str

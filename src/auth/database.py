@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-from src.auth.models import AuthModels
+from src.auth.models import AuthModels, ResetPasswordModel
 from src.dao import SQLAlchemyDAO
 from src.database import async_session_maker
 
@@ -10,19 +10,22 @@ from src.database import async_session_maker
 class AuthDAO(SQLAlchemyDAO):
     model = AuthModels
 
-    async def get_user_data(self, **filter_by):
-        async with async_session_maker() as session:
+    @classmethod
+    async def get_user_data(cls, db: AsyncSession, **filter_by):
+        stmt = select(
+            cls.model.id,
+            cls.model.login,
+            cls.model.email,
+            cls.model.is_delete,
+            cls.model.is_superuser,
+            cls.model.is_verified_email,
+            cls.model.is_verified,
+            cls.model.created_at,
+        ).filter_by(**filter_by)
+        res = await db.execute(stmt)
 
-            stmt = select(
-                self.model.id,
-                self.model.login,
-                self.model.email,
-                self.model.is_delete,
-                self.model.is_superuser,
-                self.model.is_verified_email,
-                self.model.is_verified,
-                self.model.created_at,
-            ).filter_by(**filter_by)
-            res = await session.execute(stmt)
+        return res.all()
 
-            return res.all()
+
+class ResetPasswordDAO(SQLAlchemyDAO):
+    model = ResetPasswordModel

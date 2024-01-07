@@ -34,3 +34,9 @@ class InvalidUserDoesNotExist(HTTPException):
 
     def __init__(self) -> None:
         super().__init__(status_code=401, detail="InvalidUserDoesNotExist")
+        
+class InvalidResetCode(HTTPException):
+    """Неверный код или срок действия кода истек"""
+
+    def __init__(self) -> None:
+        super().__init__(status_code=401, detail="InvalidResetCode")

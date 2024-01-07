@@ -1,6 +1,8 @@
 import bcrypt
+from random import sample
 
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.database import AuthDAO
 
@@ -15,10 +17,6 @@ async def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
 
 
-async def validate_data(db: AuthDAO, **data) -> bool:
-    return await db.find_one_or_none(**data)
-
-
 async def convert_user_data_to_dict(user_data) -> dict:
     user_data_dict = {
         "id": user_data.id,
@@ -31,3 +29,7 @@ async def convert_user_data_to_dict(user_data) -> dict:
         "created_at": user_data.created_at,
     }
     return user_data_dict
+
+
+async def generate_random_numbers(length=6) -> str:
+    return "".join(sample("0123456789", length))
