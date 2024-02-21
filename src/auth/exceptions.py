@@ -40,3 +40,9 @@ class InvalidResetCode(HTTPException):
 
     def __init__(self) -> None:
         super().__init__(status_code=401, detail="InvalidResetCode")
+
+class ExceptionInTheCreationToken(HTTPException):
+    """Ошибка создания токена"""
+
+    def __init__(self) -> None:
+        super().__init__(status_code=500, detail="ExceptionInTheCreationToken")

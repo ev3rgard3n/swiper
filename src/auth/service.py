@@ -1,13 +1,13 @@
-from copy import copy
 from datetime import datetime, timedelta
-import json
 
 from fastapi import Response
 
 from sqlalchemy.engine.row import Row as sqlalchemyRow
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from jose import JWTError, jwt
+from jose import jwt
+from jose.exceptions import JWSError, JWTError
+
 from loguru import logger
 
 
@@ -15,8 +15,8 @@ from src.auth.scheme import AuthRegistration, AuthLogin, Token
 from src.auth.config import (
     ALGORITHM,
     SECRET_KEY,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    REFRESH_TOKEN_EXPIRE_DAYS,
+    ACCESST_EXPIRE_MINUTES,
+    REFRESHT_EXPIRE_DAYS,
 )
 from src.auth.database import AuthDAO, ResetPasswordDAO
 from src.auth import exceptions
@@ -140,31 +140,41 @@ class TokenCRUD:
 
     @classmethod
     async def _create_access_token(cls, **kwargs):
-        logger.info("Создаю access_token")
+        try:
 
-        to_encode = {
-            "iss": "AuthServer",
-            "sub": "Auth",
-        }
-        expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+            logger.info("Создаю access_token")
 
-        to_encode.update(exp=expire, **kwargs)
-        encode_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
-        return encode_jwt
+            to_encode = {
+                "iss": "AuthServer",
+                "sub": "Auth",
+            }
+            expire = datetime.utcnow() + timedelta(minutes=int(ACCESST_EXPIRE_MINUTES))
+
+            to_encode.update(exp=expire, **kwargs)
+            encode_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
+            return encode_jwt
+
+        except (JWTError, JWSError) as e:
+            logger.opt(exception=e).critical("Error in create access token")
+            raise exceptions.ExceptionInTheCreationToken
 
     @classmethod
     async def _create_refresh_token(cls, data: str):
-        logger.info("Создаю refresh_token")
+        try:
+            logger.info("Создаю refresh_token")
 
-        to_encode = to_encode = {
-            "iss": "AuthServer",
-            "sub": "Auth",
-        }
-        expire = datetime.utcnow() + timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
+            to_encode = to_encode = {
+                "iss": "AuthServer",
+                "sub": "Auth",
+            }
+            expire = datetime.utcnow() + timedelta(days=int(REFRESHT_EXPIRE_DAYS))
 
-        to_encode.update(exp=expire, user_id=data)
-        encode_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
-        return encode_jwt
+            to_encode.update(exp=expire, user_id=data)
+            encode_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
+            return encode_jwt
+        except (JWTError, JWSError) as e:
+            logger.opt(exception=e).critical("Error in create access token")
+            raise exceptions.ExceptionInTheCreationToken
 
     @staticmethod
     async def _decode_token(token: str) -> dict:
@@ -182,14 +192,14 @@ class TokenCRUD:
         response.set_cookie(
             key="access_token",
             value=access_token,
-            max_age=ACCESS_TOKEN_EXPIRE_MINUTES,
+            max_age=ACCESST_EXPIRE_MINUTES,
             httponly=True,
         )
 
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
-            max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60,
+            max_age=REFRESHT_EXPIRE_DAYS * 24 * 60,
             httponly=True,
         )
 
