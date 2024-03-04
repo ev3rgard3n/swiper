@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, Response, BackgroundTasks
+from typing import Annotated
+from fastapi import APIRouter, Cookie, Depends, Response, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import EmailStr
-from loguru import logger
 
 
 from src.auth.scheme import (
@@ -13,14 +13,14 @@ from src.auth.scheme import (
     ServerResponse,
     Token,
 )
-from src.auth.service import AuthService, TokenCRUD, DatabaseManager
-from src.auth.database import AuthDAO, ResetPasswordDAO
+from src.auth.service import DatabaseManager
 from src.auth.utils import convert_user_data_to_dict
 from src.auth.email_service import send_confirm_email, send_confirm_reset_password
 from src.database import get_async_session as asession
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+cookie_type = Annotated[str | None, Cookie()]
 
 
 @router.post("/registration/", status_code=201)
@@ -29,7 +29,7 @@ async def registration(
     bg_tasks: BackgroundTasks,
     db: AsyncSession = Depends(asession),
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
 
@@ -50,7 +50,7 @@ async def login(
     user_data: AuthLogin,
     db: AsyncSession = Depends(asession),
 ) -> AuthorizedUser:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
     token_crud = db_manager.token_crud
@@ -64,9 +64,11 @@ async def login(
 
 @router.post("/login/with_token/")
 async def login_with_token(
-    response: Response, access_token: str, db: AsyncSession = Depends(asession)
+    response: Response,
+    access_token: cookie_type = None,
+    db: AsyncSession = Depends(asession),
 ) -> AuthorizedUser:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
     token_crud = db_manager.token_crud
@@ -80,12 +82,12 @@ async def login_with_token(
 
 
 @router.patch("/refresh_token/")
-async def login_with_token(
+async def refresh_token(
     response: Response,
-    refresh_token: str,
+    refresh_token: cookie_type = None,
     db: AsyncSession = Depends(asession),
 ) -> Token:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
     token_crud = db_manager.token_crud
@@ -101,7 +103,7 @@ async def login_with_token(
 async def logout(
     response: Response, db: AsyncSession = Depends(asession)
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     token_crud = db_manager.token_crud
 
@@ -112,9 +114,11 @@ async def logout(
 
 @router.delete("/deactivate/account")
 async def deactivate_account(
-    response: Response, access_token: str, db: AsyncSession = Depends(asession)
+    response: Response,
+    access_token: cookie_type = None,
+    db: AsyncSession = Depends(asession),
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
     token_crud = db_manager.token_crud
@@ -130,7 +134,7 @@ async def deactivate_account(
 async def verify_email(
     user_id: str, db: AsyncSession = Depends(asession)
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
 
@@ -145,7 +149,7 @@ async def request_reset_password(
     bg_tasks: BackgroundTasks,
     db: AsyncSession = Depends(asession),
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
     reset_password = db_manager.reset_password
@@ -170,7 +174,7 @@ async def confirm_reset_password(
     code: str,
     db: AsyncSession = Depends(asession),
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     reset_password = db_manager.reset_password
 
@@ -185,7 +189,7 @@ async def refresh_reset_password(
     bg_tasks: BackgroundTasks,
     db: AsyncSession = Depends(asession),
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     reset_password = db_manager.reset_password
 
@@ -203,7 +207,7 @@ async def request_reset_password(
     bg_tasks: BackgroundTasks,
     db: AsyncSession = Depends(asession),
 ) -> RequestToResponse:
-    
+
     db_manager = DatabaseManager(db)
     auth_service = db_manager.auth_service
     reset_password = db_manager.reset_password

@@ -46,3 +46,9 @@ class ExceptionInTheCreationToken(HTTPException):
 
     def __init__(self) -> None:
         super().__init__(status_code=500, detail="ExceptionInTheCreationToken")
+
+class ExceptionInTheDecodeToken(HTTPException):
+    """Ошибка при декодировании токена"""
+
+    def __init__(self) -> None:
+        super().__init__(status_code=500, detail="Exception In The Decode Token")

@@ -93,8 +93,7 @@ class AuthService:
         logger.info("Автризация через токен")
 
         login = user_data["user_login"]
-        user_id = user_data["user_id"]
-        user_data = await self.get_user_data(login=login, id=user_id)
+        user_data = await self.get_user_data(login=login)
 
         return user_data
 
@@ -109,9 +108,8 @@ class AuthService:
         logger.info("Деактивация аккаунта")
 
         login = user_data["user_login"]
-        user_id = user_data["user_id"]
 
-        filters = {"id": user_id, "login": login}
+        filters = {"login": login}
         await AuthDAO.update_one(
             self.db, filters, is_delete=True, deactivate_at=datetime.utcnow()
         )
@@ -121,10 +119,11 @@ class AuthService:
 class TokenCRUD:
     @classmethod
     async def create_tokens(cls, data: sqlalchemyRow, response: Response):
+        
         logger.debug("Создаю токены")
 
         access_token = await cls._create_access_token(
-            user_login=data.login, user_id=str(data.id), is_admin=data.is_superuser
+            user_login=data.login, is_admin=data.is_superuser
         )
         refresh_token = await cls._create_refresh_token(str(data.id))
 
@@ -139,7 +138,8 @@ class TokenCRUD:
         await cls._delete_cookie(response=response)
 
     @classmethod
-    async def _create_access_token(cls, **kwargs):
+    async def _create_access_token(cls, **kwargs) -> str:
+        """ **kwargs:  user_login и is_admin """
         try:
 
             logger.info("Создаю access_token")
@@ -159,7 +159,7 @@ class TokenCRUD:
             raise exceptions.ExceptionInTheCreationToken
 
     @classmethod
-    async def _create_refresh_token(cls, data: str):
+    async def _create_refresh_token(cls, user_id: str) -> str:
         try:
             logger.info("Создаю refresh_token")
 
@@ -169,8 +169,9 @@ class TokenCRUD:
             }
             expire = datetime.utcnow() + timedelta(days=int(REFRESHT_EXPIRE_DAYS))
 
-            to_encode.update(exp=expire, user_id=data)
+            to_encode.update(exp=expire, user_id=user_id)
             encode_jwt = jwt.encode(to_encode, SECRET_KEY, ALGORITHM)
+
             return encode_jwt
         except (JWTError, JWSError) as e:
             logger.opt(exception=e).critical("Error in create access token")
@@ -178,10 +179,14 @@ class TokenCRUD:
 
     @staticmethod
     async def _decode_token(token: str) -> dict:
-        logger.info("Декодирую jwt")
+        try:
+            logger.info("Декодирую jwt")
 
-        decode_jwt = jwt.decode(token, SECRET_KEY, ALGORITHM)
-        return decode_jwt
+            decode_jwt = jwt.decode(token, SECRET_KEY, ALGORITHM)
+            return decode_jwt
+        except (JWTError, JWSError) as e:
+            logger.opt(exception=e).critical("Error in decode token")
+            raise exceptions.ExceptionInTheDecodeToken
 
     @classmethod
     async def _set_token_in_cookie(
@@ -192,15 +197,17 @@ class TokenCRUD:
         response.set_cookie(
             key="access_token",
             value=access_token,
-            max_age=ACCESST_EXPIRE_MINUTES,
+            max_age=ACCESST_EXPIRE_MINUTES * 60,
             httponly=True,
+            secure=True
         )
 
         response.set_cookie(
             key="refresh_token",
             value=refresh_token,
-            max_age=REFRESHT_EXPIRE_DAYS * 24 * 60,
+            max_age=REFRESHT_EXPIRE_DAYS * 60 * 24 * 30,
             httponly=True,
+            secure=True
         )
 
     @classmethod
