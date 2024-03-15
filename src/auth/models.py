@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Annotated
+import uuid
 
 from sqlalchemy import text, Column
 from sqlalchemy.orm import Mapped, mapped_column
@@ -14,7 +15,14 @@ uniq_null_params = Annotated[str, mapped_column(nullable=False, unique=True)]
 
 class AuthModels(Base):
     __tablename__ = "Auth"
-    id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+
+    id :Mapped[uuid.UUID] = mapped_column(
+        UUID, 
+        primary_key=True,
+        nullable=False, 
+        unique=True,
+        server_default=text("gen_random_uuid()")
+    )
 
     login: Mapped[uniq_null_params]
     hashed_password: Mapped[str] = mapped_column(nullable=False)
@@ -23,13 +31,12 @@ class AuthModels(Base):
     is_delete: Mapped[is_bool_params]
     is_superuser: Mapped[is_bool_params]
     is_verified_email: Mapped[is_bool_params]
+
     is_verified: Mapped[bool] = mapped_column(
-        primary_key=True, 
         default=False
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        primary_key=True, 
         server_default=text("TIMEZONE('utc', now())")
     )
     deactivate_at: Mapped[datetime] = mapped_column(

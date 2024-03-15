@@ -34,7 +34,7 @@ class AuthorizedUser(BaseModel):
 
 
 class ServerResponse(BaseModel):
-    msg: str
+    msg: str = "Request Success"
     code: int = 0
     data: dict | None = None
 

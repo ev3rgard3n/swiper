@@ -1,10 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-
 from src.auth.models import AuthModels, ResetPasswordModel
 from src.dao import SQLAlchemyDAO
-from src.database import async_session_maker
 
 
 class AuthDAO(SQLAlchemyDAO):

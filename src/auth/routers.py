@@ -3,8 +3,7 @@ from fastapi import APIRouter, Cookie, Depends, Response, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import EmailStr
 
-
-from src.auth.scheme import (
+from src.auth.schemes import (
     AuthRegistration,
     AuthLogin,
     AuthorizedUser,
@@ -13,7 +12,7 @@ from src.auth.scheme import (
     ServerResponse,
     Token,
 )
-from src.auth.service import DatabaseManager
+from src.auth.services import DatabaseManager
 from src.auth.utils import convert_user_data_to_dict
 from src.auth.email_service import send_confirm_email, send_confirm_reset_password
 from src.database import get_async_session as asession

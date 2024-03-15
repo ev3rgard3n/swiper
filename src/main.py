@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 
-from src.config import DATABASE_URL
-from src.auth.router import router as auth_router
+from src.auth.routers import router as auth_routers
+from src.user_profile.routers import router as user_routers
 
 
 app = FastAPI(title="Swiper")
 
-app.include_router(auth_router)
+app.include_router(auth_routers)
+app.include_router(user_routers)
 
 
 @app.get("/", response_class=HTMLResponse)

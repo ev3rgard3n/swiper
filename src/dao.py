@@ -1,7 +1,6 @@
 from sqlalchemy import select, insert, delete, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import async_session_maker
 from src.interfaces import AbstactDAO
 
 

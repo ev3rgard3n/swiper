@@ -11,7 +11,7 @@ from jose.exceptions import JWSError, JWTError
 from loguru import logger
 
 
-from src.auth.scheme import AuthRegistration, AuthLogin, Token
+from src.auth.schemes import AuthRegistration, AuthLogin, Token
 from src.auth.config import (
     ALGORITHM,
     SECRET_KEY,
@@ -119,7 +119,6 @@ class AuthService:
 class TokenCRUD:
     @classmethod
     async def create_tokens(cls, data: sqlalchemyRow, response: Response):
-        
         logger.debug("Создаю токены")
 
         access_token = await cls._create_access_token(
@@ -237,13 +236,13 @@ class ResetPasswordCRUD:
         logger.info("Проверка введеного кода")
 
         data = await self._get_data_from_db(email=email)
-        logger.debug(f"{data}")
-        logger.debug(f"{data.__dict__}")
 
         if data.created_at + timedelta(minutes=30) < datetime.utcnow():
+            logger.error("Время дейсвия кода истекло")
             raise exceptions.InvalidResetCode
 
         if reset_code != data.reset_code:
+            logger.error("Не верный код")
             raise exceptions.InvalidResetCode
 
     async def _get_data_from_db(self, **filter_by) -> str:
