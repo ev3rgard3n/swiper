@@ -9,6 +9,9 @@ class UserCRUD:
 
     async def get_user_profile(self, **filter_by) :
         return await UserDAO.find_one_or_none(self.db, **filter_by)
+    
+    async def create_base_user_profile(self, **value):
+        ...
 
 
 class DatabaseManager:

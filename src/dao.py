@@ -1,3 +1,4 @@
+from loguru import logger
 from sqlalchemy import select, insert, delete, update, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,8 +26,7 @@ class SQLAlchemyDAO(AbstactDAO):
     async def add_one(cls, db: AsyncSession, **values):
         stmt = insert(cls.model).values(**values).returning(cls.model)
         res = await db.execute(stmt)
-
-        return res.scalars().all()
+        return res.scalars().first()
 
     @classmethod
     async def update_one(cls, db: AsyncSession, filters: dict, **values):

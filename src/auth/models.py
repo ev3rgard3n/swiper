@@ -1,12 +1,13 @@
+import uuid
 from datetime import datetime
 from typing import Annotated
-import uuid
 
-from sqlalchemy import text, Column
+from sqlalchemy import text, Column, event
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 
 from src.database import Base
+from src.user_profile.models import UserProfileModel
 
 
 is_bool_params = Annotated[bool, mapped_column(nullable=False, default=False)]
@@ -42,6 +43,20 @@ class AuthModels(Base):
     deactivate_at: Mapped[datetime] = mapped_column(
         nullable=True
     )
+
+
+# @event.listens_for(AuthModels, 'after_insert')
+# def receive_after_insert(mapper, connection, target):
+#     try:
+#         user_profile = UserProfileModel(
+#             user_id=target.id,
+#             username=target.login, 
+#         )
+#         connection.add(user_profile)
+#         connection.commit()
+#     except Exception:
+#         connection.rollback()
+
 
 class ResetPasswordModel(Base):
     __tablename__ = "ResetPassword"

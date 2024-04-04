@@ -1,3 +1,5 @@
+import string
+import random
 import bcrypt
 from random import sample
 
@@ -33,3 +35,10 @@ async def convert_user_data_to_dict(user_data) -> dict:
 
 async def generate_random_numbers(length=6) -> str:
     return "".join(sample("0123456789", length))
+
+
+# def randomword():
+#    letters = string.ascii_lowercase
+#    letters_number = string.digits
+   
+#    return f"user_name{''.join(random.choice(letters + letters_number) for i in range(20))}"

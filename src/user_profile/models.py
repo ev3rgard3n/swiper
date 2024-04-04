@@ -22,8 +22,15 @@ class UserProfileModel(Base):
         server_default=text("gen_random_uuid()")
     )
 
-    username: Mapped[str] = mapped_column(nullable=False, unique=True)
+    username: Mapped[str] = mapped_column(
+        nullable=False,
+        unique=True,
+    )
     profile_bio: Mapped[str] = mapped_column(
         String(120), nullable=True, unique=False)
 
-    profile_photo: Mapped[str] = mapped_column(nullable=False, unique=True)
+    profile_photo: Mapped[str] = mapped_column(
+        nullable=False,
+        unique=True,
+        server_default="image/user.png"
+    )

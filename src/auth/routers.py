@@ -11,6 +11,7 @@ from src.auth.schemes import (
     ResetPassword,
     ServerResponse,
     Token,
+    UserData
 )
 from src.auth.services import DatabaseManager
 from src.auth.utils import convert_user_data_to_dict
@@ -22,25 +23,28 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 cookie_type = Annotated[str | None, Cookie()]
 
 
-@router.post("/registration/", status_code=201)
+@router.post("/registration/",   response_model = UserData, status_code=201)
 async def registration(
     user_data: AuthRegistration,
     bg_tasks: BackgroundTasks,
     db: AsyncSession = Depends(asession),
-) -> RequestToResponse:
+) -> UserData:
+    try:
 
-    db_manager = DatabaseManager(db)
-    auth_service = db_manager.auth_service
+        db_manager = DatabaseManager(db)
+        auth_service = db_manager.auth_service
 
-    user_data = await auth_service.create_user(user_data=user_data)
-    bg_tasks.add_task(
-        send_confirm_email, user_id=user_data.id, email_receiver=user_data.email
-    )
-
-    user_data = await convert_user_data_to_dict(user_data=user_data)
-    server_response = ServerResponse(msg="The user is registered", data=user_data)
-
-    return RequestToResponse(detail=server_response)
+        user_data = await auth_service.create_user(user_data=user_data)
+        await db_manager.commit()
+        
+        bg_tasks.add_task(
+            send_confirm_email, user_id=user_data.pdq, email_receiver=user_data.email
+        )
+        
+        return user_data
+    
+    except Exception:
+        await db_manager.rollback()
 
 
 @router.post("/login/")

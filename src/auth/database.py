@@ -22,7 +22,7 @@ class AuthDAO(SQLAlchemyDAO):
         ).filter_by(**filter_by)
         res = await db.execute(stmt)
 
-        return res.all()
+        return res.first()
 
 
 class ResetPasswordDAO(SQLAlchemyDAO):

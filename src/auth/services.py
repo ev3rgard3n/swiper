@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from fastapi import Response
-
 from sqlalchemy.engine.row import Row as sqlalchemyRow
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,28 +9,29 @@ from jose.exceptions import JWSError, JWTError
 
 from loguru import logger
 
-
-from src.auth.schemes import AuthRegistration, AuthLogin, Token
 from src.auth.config import (
     ALGORITHM,
     SECRET_KEY,
     ACCESST_EXPIRE_MINUTES,
     REFRESHT_EXPIRE_DAYS,
 )
-from src.auth.database import AuthDAO, ResetPasswordDAO
-from src.auth import exceptions
 from src.auth.utils import *
+from src.auth import exceptions
+from src.user_profile.services import UserCRUD
+from src.auth.database import AuthDAO, ResetPasswordDAO
+from src.auth.schemes import AuthRegistration, AuthLogin, Token
 
 
 class AuthService:
     def __init__(self, db):
         self.db = db
 
+
     async def get_user_data(self, **filter_by) -> sqlalchemyRow:
         try:
             logger.info("Запрос user_data")
             user_data = await AuthDAO.get_user_data(self.db, **filter_by)
-            return user_data[0]
+            return user_data
         except IndexError:
             raise exceptions.InvalidUserDoesNotExist
 
@@ -56,9 +56,8 @@ class AuthService:
         data = await AuthDAO.add_one(
             self.db, login=login, hashed_password=hashed_password, email=email
         )
-
-        await self.db.commit()
-        return data[0]
+        
+        return data
 
     @staticmethod
     async def validate_password(password: str, hashed_password: str) -> bool:
@@ -277,6 +276,10 @@ class DatabaseManager:
         self.reset_password = ResetPasswordCRUD(db)
         self.auth_service = AuthService(db)
         self.token_crud = TokenCRUD()
+        self.user_profile = UserCRUD(db)
 
     async def commit(self):
         await self.db.commit()
+    
+    async def rollback(self):
+        await self.db.rollback()
