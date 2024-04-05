@@ -1,5 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter, Cookie, Depends, Response, BackgroundTasks
+from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import EmailStr
 
@@ -23,25 +24,32 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 cookie_type = Annotated[str | None, Cookie()]
 
 
-@router.post("/registration/",   response_model = UserData, status_code=201)
+@router.post("/registration/",  status_code=201)
 async def registration(
     user_data: AuthRegistration,
     bg_tasks: BackgroundTasks,
     db: AsyncSession = Depends(asession),
-) -> UserData:
+):
     try:
 
         db_manager = DatabaseManager(db)
         auth_service = db_manager.auth_service
+        user_profile = db_manager.user_profile
 
-        user_data = await auth_service.create_user(user_data=user_data)
+        data = await auth_service.create_user(user_data=user_data)
+        logger.info(data)
+        _ = await user_profile.create_base_user_profile(user_data=data)
+        logger.info(12345)
         await db_manager.commit()
         
         bg_tasks.add_task(
-            send_confirm_email, user_id=user_data.pdq, email_receiver=user_data.email
+            send_confirm_email, user_id=data.id, email_receiver=data.email
         )
         
-        return user_data
+        logger.info(12313212314323)
+        logger.debug(data.model_dump())
+
+        return data
     
     except Exception:
         await db_manager.rollback()

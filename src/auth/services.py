@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Annotated
 
 from fastapi import Response
 from sqlalchemy.engine.row import Row as sqlalchemyRow
@@ -42,7 +43,7 @@ class AuthService:
     async def validate_data(self, **data):
         return await AuthDAO.find_one_or_none(self.db, **data)
 
-    async def create_user(self, *, user_data: AuthRegistration) -> str:
+    async def create_user(self, *, user_data: AuthRegistration) -> sqlalchemyRow:
         login = user_data.login
         email = user_data.email
 
@@ -56,7 +57,7 @@ class AuthService:
         data = await AuthDAO.add_one(
             self.db, login=login, hashed_password=hashed_password, email=email
         )
-        
+        logger.info(123)
         return data
 
     @staticmethod

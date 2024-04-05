@@ -1,3 +1,4 @@
+from typing import Optional
 import uuid
 from sqlalchemy import ForeignKey, String, text, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -26,11 +27,11 @@ class UserProfileModel(Base):
         nullable=False,
         unique=True,
     )
-    profile_bio: Mapped[str] = mapped_column(
-        String(120), nullable=True, unique=False)
+    profile_bio: Mapped[str | None] = mapped_column(
+        String(120), unique=False)
 
     profile_photo: Mapped[str] = mapped_column(
         nullable=False,
-        unique=True,
+        unique=False,
         server_default="image/user.png"
     )

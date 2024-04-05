@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Annotated
 
-from sqlalchemy import text, Column, event
+from sqlalchemy import ForeignKey, text, Column, event
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 
@@ -40,28 +40,17 @@ class AuthModels(Base):
     created_at: Mapped[datetime] = mapped_column(
         server_default=text("TIMEZONE('utc', now())")
     )
-    deactivate_at: Mapped[datetime] = mapped_column(
-        nullable=True
-    )
-
-
-# @event.listens_for(AuthModels, 'after_insert')
-# def receive_after_insert(mapper, connection, target):
-#     try:
-#         user_profile = UserProfileModel(
-#             user_id=target.id,
-#             username=target.login, 
-#         )
-#         connection.add(user_profile)
-#         connection.commit()
-#     except Exception:
-#         connection.rollback()
+    deactivate_at: Mapped[datetime | None]
 
 
 class ResetPasswordModel(Base):
     __tablename__ = "ResetPassword"
 
-    id = Column(UUID(as_uuid=True), primary_key=True)
+    id :Mapped[uuid.UUID] = mapped_column(
+        UUID, 
+        primary_key=True,
+        unique=True,
+    )
     email: Mapped[uniq_null_params]
     reset_code: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(
