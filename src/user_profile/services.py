@@ -2,6 +2,7 @@ from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.user_profile.database import UserDAO
+from src.user_profile.schemes import UpdateModel
 
 
 class UserCRUD:
@@ -23,7 +24,11 @@ class UserCRUD:
             )
             logger.info(333333)
         except Exception as e:
-            logger.opt(exception=e).error('sgfdjigid')
+            logger.opt(exception=e).error('Error in create_base_user_profile')
+
+    async def update_user_profile(self, user_id:str, user_data: UpdateModel): 
+        filter_dict = {"user_id":user_id}
+        return await UserDAO.update_one(self.db, filter_dict, user_data)
 
 
 class DatabaseManager:

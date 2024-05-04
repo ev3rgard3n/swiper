@@ -1,3 +1,4 @@
+from sqlalchemy import text, update
 from src.user_profile.models import UserProfileModel
 from src.dao import SQLAlchemyDAO
 

@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Annotated
 
 from fastapi import Response
 from sqlalchemy.engine.row import Row as sqlalchemyRow
@@ -26,7 +25,6 @@ from src.auth.schemes import AuthRegistration, AuthLogin, Token
 class AuthService:
     def __init__(self, db):
         self.db = db
-
 
     async def get_user_data(self, **filter_by) -> sqlalchemyRow:
         try:
@@ -73,7 +71,6 @@ class AuthService:
         filters = {"email": email}
 
         await AuthDAO.update_one(self.db, filters, hashed_password=hashed_password)
-        await self.db.commit()
 
     async def user_authorization(self, *, user_data: AuthLogin) -> sqlalchemyRow:
         login = user_data.login
@@ -102,7 +99,6 @@ class AuthService:
 
         filters = {"id": user_id}
         await AuthDAO.update_one(self.db, filters, is_verified_email=True)
-        await self.db.commit()
 
     async def deactivate_account(self, user_data: dict) -> None:
         logger.info("Деактивация аккаунта")
@@ -113,7 +109,6 @@ class AuthService:
         await AuthDAO.update_one(
             self.db, filters, is_delete=True, deactivate_at=datetime.utcnow()
         )
-        await self.db.commit()
 
 
 class TokenCRUD:
@@ -138,7 +133,7 @@ class TokenCRUD:
 
     @classmethod
     async def _create_access_token(cls, **kwargs) -> str:
-        """ **kwargs:  user_login и is_admin """
+        """**kwargs:  user_login и is_admin"""
         try:
 
             logger.info("Создаю access_token")
@@ -198,7 +193,7 @@ class TokenCRUD:
             value=access_token,
             max_age=ACCESST_EXPIRE_MINUTES * 60,
             httponly=True,
-            secure=True
+            secure=True,
         )
 
         response.set_cookie(
@@ -206,7 +201,7 @@ class TokenCRUD:
             value=refresh_token,
             max_age=REFRESHT_EXPIRE_DAYS * 60 * 24 * 30,
             httponly=True,
-            secure=True
+            secure=True,
         )
 
     @classmethod
@@ -229,7 +224,6 @@ class ResetPasswordCRUD:
         await ResetPasswordDAO.add_one(
             self.db, id=id, reset_code=reset_code, email=email
         )
-        await self.db.commit()
         return reset_code
 
     async def confirm_reset_password(self, email: str, reset_code: str) -> None:
@@ -260,7 +254,6 @@ class ResetPasswordCRUD:
         await ResetPasswordDAO.update_one(
             self.db, filters, reset_code=reset_code, created_at=datetime.utcnow()
         )
-        await self.db.commit()
 
         return reset_code
 
@@ -268,7 +261,6 @@ class ResetPasswordCRUD:
         email = user_data.email
         code = user_data.code
         await ResetPasswordDAO.delete_one(self.db, email=email, reset_code=code)
-        await self.db.commit()
 
 
 class DatabaseManager:
@@ -281,6 +273,6 @@ class DatabaseManager:
 
     async def commit(self):
         await self.db.commit()
-    
+
     async def rollback(self):
         await self.db.rollback()

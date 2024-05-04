@@ -4,6 +4,7 @@ from smtplib import SMTP_SSL
 from ssl import create_default_context
 
 from loguru import logger
+from celery import Celery
 
 from src.auth.config import (
     BODY_FOR_CONFIRM_EMAIL,
@@ -12,7 +13,10 @@ from src.auth.config import (
     BODY_FOR_RESET_PASSWORD,
 )
 
+celery = Celery("send_email", broker="redis://localhost:6379")
 
+
+@celery.task
 def send_confirm_reset_password(reset_code: str, email_receiver: str) -> None:
     logger.debug(f"Email на сброс пароля для {email_receiver}")
     body = BODY_FOR_RESET_PASSWORD.format(email_receiver, reset_code)
@@ -29,6 +33,7 @@ def send_confirm_reset_password(reset_code: str, email_receiver: str) -> None:
         smtp.sendmail(EMAIL_SENDER, email_receiver, msg.as_string())
 
 
+@celery.task
 def send_confirm_email(user_id: str, email_receiver: str) -> None:
     logger.debug(f"Email на верификацию для {email_receiver} с {user_id}")
     body = BODY_FOR_CONFIRM_EMAIL.format(user_id, user_id)
